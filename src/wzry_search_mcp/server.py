@@ -21,7 +21,8 @@ logger = logging.getLogger("mcp-search")
 SEARCH_BACKEND = os.getenv("SEARCH_BACKEND", "tavily")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
-DEFAULT_MAX_RESULTS = int(os.getenv("MAX_RESULTS", "8"))
+DEFAULT_MAX_RESULTS = int(os.getenv("MAX_RESULTS", "15"))
+MIN_SCORE_THRESHOLD = float(os.getenv("MIN_SCORE", "0.1"))
 
 # 游戏问题白名单域名：只搜这些站点
 GAME_DOMAINS = [
@@ -98,7 +99,7 @@ class TavilyBackend:
             "api_key": TAVILY_API_KEY,
             "query": query,
             "max_results": max_results,
-            "include_answer": False,
+            "include_answer": True,
             "include_raw_content": False,
             "search_depth": "advanced",
         }
@@ -113,6 +114,9 @@ class TavilyBackend:
 
         results = []
         for r in data.get("results", []):
+            score = r.get("score", 0.0)
+            if score < MIN_SCORE_THRESHOLD:
+                continue
             url = r.get("url", "")
             results.append({
                 "title": r.get("title", ""),
@@ -120,7 +124,7 @@ class TavilyBackend:
                 "snippet": r.get("content", ""),
                 "hostname": _extract_domain(url),
                 "publish_date": r.get("published_date", ""),
-                "score": r.get("score", 0.0),
+                "score": score,
             })
         return results
 
