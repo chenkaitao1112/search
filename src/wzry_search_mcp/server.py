@@ -24,30 +24,25 @@ SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 DEFAULT_MAX_RESULTS = int(os.getenv("MAX_RESULTS", "8"))
 
 # 游戏问题白名单域名：只搜这些站点
-# 注意：pvp.qq.com 是JS渲染页面，Tavily抓不到正文，已移除
 GAME_DOMAINS = [
+    "pvp.qq.com",
+    "kpl.qq.com",
     "ngabbs.com",
     "nga.cn",
     "bilibili.com",
     "douyin.com",
-    "kpl.qq.com",
 ]
 
 # 非游戏问题优先域名（兜底模式，不强制限定，但优先排序）
 GENERAL_PREFERRED_DOMAINS = [
     "xiaohongshu.com",
+    "pvp.qq.com",
     "bilibili.com",
     "douyin.com",
 ]
 
 # 信源优先级排序（游戏模式）
-PREFERRED_DOMAINS = [
-    "ngabbs.com",
-    "nga.cn",
-    "bilibili.com",
-    "douyin.com",
-    "kpl.qq.com",
-]
+PREFERRED_DOMAINS = GAME_DOMAINS
 
 # 黑名单域名（所有模式都降权）
 LOW_QUALITY_DOMAINS = [
@@ -58,7 +53,6 @@ LOW_QUALITY_DOMAINS = [
     "toutiao.com",
     "18183.com",
     "17173.com",
-    "pvp.qq.com",
 ]
 
 
