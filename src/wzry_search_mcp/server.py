@@ -23,8 +23,8 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 DEFAULT_MAX_RESULTS = int(os.getenv("MAX_RESULTS", "8"))
 
-# 白名单域名：只搜这些站点（通过Tavily include_domains限定）
-ALLOWED_DOMAINS = [
+# 游戏问题白名单域名：只搜这些站点
+GAME_DOMAINS = [
     "pvp.qq.com",
     "kpl.qq.com",
     "ngabbs.com",
@@ -33,16 +33,18 @@ ALLOWED_DOMAINS = [
     "douyin.com",
 ]
 
-# 信源优先级排序（白名单内的排序）
-PREFERRED_DOMAINS = [
+# 非游戏问题优先域名（兜底模式，不强制限定，但优先排序）
+GENERAL_PREFERRED_DOMAINS = [
+    "xiaohongshu.com",
     "pvp.qq.com",
-    "kpl.qq.com",
-    "ngabbs.com",
-    "nga.cn",
     "bilibili.com",
     "douyin.com",
 ]
 
+# 信源优先级排序（游戏模式）
+PREFERRED_DOMAINS = GAME_DOMAINS
+
+# 黑名单域名（所有模式都降权）
 LOW_QUALITY_DOMAINS = [
     "baijiahao.baidu.com",
     "zhihu.com",
@@ -63,10 +65,11 @@ def _extract_domain(url):
         return ""
 
 
-def rank_results(results):
+def rank_results(results, category="game"):
+    domains = PREFERRED_DOMAINS if category == "game" else GENERAL_PREFERRED_DOMAINS
     domain_priority = {}
-    for i, domain in enumerate(PREFERRED_DOMAINS):
-        domain_priority[domain] = len(PREFERRED_DOMAINS) - i
+    for i, domain in enumerate(domains):
+        domain_priority[domain] = len(domains) - i
 
     def get_priority(r):
         priority = 0
@@ -87,7 +90,7 @@ def rank_results(results):
 class TavilyBackend:
     API_URL = "https://api.tavily.com/search"
 
-    async def search(self, query, max_results=DEFAULT_MAX_RESULTS):
+    async def search(self, query, max_results=DEFAULT_MAX_RESULTS, category="game"):
         if not TAVILY_API_KEY:
             raise ValueError("TAVILY_API_KEY not configured")
 
@@ -98,8 +101,10 @@ class TavilyBackend:
             "include_answer": False,
             "include_raw_content": False,
             "search_depth": "advanced",
-            "include_domains": ALLOWED_DOMAINS,
         }
+
+        if category == "game":
+            payload["include_domains"] = GAME_DOMAINS
 
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(self.API_URL, json=payload)
@@ -123,7 +128,7 @@ class TavilyBackend:
 class SerperBackend:
     API_URL = "https://google.serper.dev/search"
 
-    async def search(self, query, max_results=DEFAULT_MAX_RESULTS):
+    async def search(self, query, max_results=DEFAULT_MAX_RESULTS, category="game"):
         if not SERPER_API_KEY:
             raise ValueError("SERPER_API_KEY not configured")
 
@@ -176,6 +181,12 @@ SEARCH_TOOL = Tool(
                 "type": "number",
                 "description": "返回结果数量，默认8条",
                 "default": DEFAULT_MAX_RESULTS
+            },
+            "category": {
+                "type": "string",
+                "description": "搜索类别：game=游戏相关问题(限定专业游戏信源)，general=非游戏问题(不限域名，优先小红书等生活类信源)",
+                "default": "game",
+                "enum": ["game", "general"]
             }
         },
         "required": ["query"]
@@ -195,22 +206,24 @@ async def call_tool(name, arguments):
 
     query = arguments.get("query", "")
     count = int(arguments.get("count", DEFAULT_MAX_RESULTS))
+    category = arguments.get("category", "game")
 
     if not query:
         return [TextContent(type="text", text=json.dumps({"error": "query is empty"}))]
 
-    logger.info("search request: query=%s, count=%s, backend=%s", query, count, SEARCH_BACKEND)
+    logger.info("search request: query=%s, count=%s, category=%s, backend=%s", query, count, category, SEARCH_BACKEND)
 
     try:
         backend = get_backend()
-        results = await backend.search(query, count)
-        results = rank_results(results)
+        results = await backend.search(query, count, category=category)
+        results = rank_results(results, category=category)
 
         output = {
             "pages": results,
             "query": query,
             "total": len(results),
             "backend": SEARCH_BACKEND,
+            "category": category,
         }
 
         logger.info("search done: query=%s, results=%d", query, len(results))
