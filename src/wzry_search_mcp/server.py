@@ -23,22 +23,34 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 DEFAULT_MAX_RESULTS = int(os.getenv("MAX_RESULTS", "8"))
 
-# 信源优先级
-PREFERRED_DOMAINS = [
+# 白名单域名：只搜这些站点（通过Tavily include_domains限定）
+ALLOWED_DOMAINS = [
     "pvp.qq.com",
+    "kpl.qq.com",
     "ngabbs.com",
     "nga.cn",
     "bilibili.com",
-    "zhihu.com",
-    "sohu.com",
-    "18183.com",
-    "17173.com",
-    "weibo.com",
-    "toutiao.com",
+    "douyin.com",
+]
+
+# 信源优先级排序（白名单内的排序）
+PREFERRED_DOMAINS = [
+    "pvp.qq.com",
+    "kpl.qq.com",
+    "ngabbs.com",
+    "nga.cn",
+    "bilibili.com",
+    "douyin.com",
 ]
 
 LOW_QUALITY_DOMAINS = [
     "baijiahao.baidu.com",
+    "zhihu.com",
+    "sohu.com",
+    "weibo.com",
+    "toutiao.com",
+    "18183.com",
+    "17173.com",
 ]
 
 
@@ -86,6 +98,7 @@ class TavilyBackend:
             "include_answer": False,
             "include_raw_content": False,
             "search_depth": "advanced",
+            "include_domains": ALLOWED_DOMAINS,
         }
 
         async with httpx.AsyncClient(timeout=30) as client:
