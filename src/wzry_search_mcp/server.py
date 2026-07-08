@@ -210,15 +210,18 @@ async def call_tool(name, arguments):
 
 # ==================== 入口 ====================
 
-async def main():
+def main():
+    import asyncio
     logger.info("MCP search service starting: backend=%s", SEARCH_BACKEND)
     logger.info("Tavily API Key: %s", "configured" if TAVILY_API_KEY else "not configured")
     logger.info("Serper API Key: %s", "configured" if SERPER_API_KEY else "not configured")
+    asyncio.run(_run())
 
+
+async def _run():
     async with mcp.server.stdio.stdio_server() as (read, write):
         await server.run(read, write, server.create_initialization_options())
 
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
