@@ -18,7 +18,7 @@ logger = logging.getLogger("mcp-search")
 
 # ==================== 配置 ====================
 
-SEARCH_BACKEND = os.getenv("SEARCH_BACKEND", "tavily")
+SEARCH_BACKEND = os.getenv("SEARCH_BACKEND", "serper")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 DEFAULT_MAX_RESULTS = int(os.getenv("MAX_RESULTS", "8"))
@@ -140,6 +140,10 @@ class SerperBackend:
 
         headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
         payload = {"q": query, "num": max_results}
+
+        if category == "game":
+            payload["gl"] = "cn"
+            payload["hl"] = "zh-cn"
 
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(self.API_URL, json=payload, headers=headers)
